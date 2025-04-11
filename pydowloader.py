@@ -15,7 +15,7 @@ def obtener_carpeta_destino():
     print("2. Música")
     print("3. Otro")
 
-    opcion = input("📝 Elige una opción (1-4): ").strip()
+    opcion = input("📝 Elige una opción (1-3): ").strip()
 
     if opcion == "4":
         nueva = input("🆕 Escribe el nombre de la nueva carpeta: ").strip()
