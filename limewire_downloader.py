@@ -1,11 +1,10 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
+from tkinter import ttk, messagebox, simpledialog, Menu
 import os
 import subprocess
 import threading
 import yt_dlp
 import sys
-import json
 import random
 import pygame
 import time
@@ -13,10 +12,9 @@ import time
 TIPOS_CARPETAS = {
     "Películas 🎥": "peliculas",
     "Música 🎶": "musica",
-    "Otro 🧩": "otro"
+    "Otro 🧹": "otro"
 }
 
-# --- INTERFAZ DE PROGRESO ---
 class ProgresoDescarga(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
@@ -24,7 +22,9 @@ class ProgresoDescarga(tk.Toplevel):
         self.geometry("300x100")
         self.resizable(False, False)
 
-        self.barra = ttk.Progressbar(self, length=250, mode='determinate')
+        # self.barra = ttk.Progressbar(self, length=250, mode='determinate')
+        self.barra = ttk.Progressbar(self, length=250, mode='determinate', maximum=100)
+
         self.barra.pack(pady=10)
 
         self.label = tk.Label(self, text="Iniciando descarga...")
@@ -39,16 +39,16 @@ class ProgresoDescarga(tk.Toplevel):
     def cerrar(self):
         self.destroy()
 
-# Descargar según tipo de archivo
 def descargar_con_tipo(tipo_seleccionado):
     url = simpledialog.askstring("🔗 URL", "Pega el link del video:")
     if not url:
         return
 
-    if tipo_seleccionado == "Otro 🧩":
+    if tipo_seleccionado == "Otro 🧹":
         tipo_carpeta = simpledialog.askstring("📁 Carpeta personalizada", "Escribe el nombre de la carpeta:")
         if not tipo_carpeta:
             return
+        tipo_carpeta = os.path.join("otro", tipo_carpeta)
     else:
         tipo_carpeta = TIPOS_CARPETAS[tipo_seleccionado]
 
@@ -57,10 +57,11 @@ def descargar_con_tipo(tipo_seleccionado):
 
     def hook(d):
         if d['status'] == 'downloading':
-            porcentaje = d.get('_percent_str', '0.0%').strip().replace('%', '')
-            texto = f"{d['_percent_str']} - {d.get('eta', '?')}s restantes"
+            porcentaje_str = d.get('_percent_str', '0.0%').strip().replace('%', '').replace(',', '.')
             try:
-                ventana_progreso.actualizar(float(porcentaje), texto)
+                porcentaje = float(porcentaje_str)
+                texto = f"{d['_percent_str']} - {d.get('eta', '?')}s restantes"
+                ventana_progreso.actualizar(porcentaje, texto)
             except:
                 pass
         elif d['status'] == 'finished':
@@ -98,7 +99,7 @@ def descargar_con_tipo(tipo_seleccionado):
                 ydl.download([url])
 
             messagebox.showinfo("✅ Descargado", f"Guardado en '{tipo_carpeta}'")
-            actualizar_lista()
+            mostrar_contenido(tab_actual.get())
         except Exception as e:
             messagebox.showerror("❌ Error", f"No se pudo descargar: {e}")
         finally:
@@ -106,120 +107,134 @@ def descargar_con_tipo(tipo_seleccionado):
 
     threading.Thread(target=tarea, daemon=True).start()
 
-# Mostrar solo música
-def actualizar_lista(filtro=""):
+def abrir_archivo(ruta):
+    try:
+        if os.name == 'nt':
+            os.startfile(ruta)
+        else:
+            subprocess.run(['open' if sys.platform == 'darwin' else 'xdg-open', ruta])
+    except Exception as e:
+        messagebox.showerror("❌ Error", f"No se pudo abrir: {e}")
+
+def mostrar_contenido(tipo):
+    filtro = entrada_filtro.get().lower().strip()
+
     for item in lista.get_children():
         lista.delete(item)
-    if not os.path.isdir("musica"):
-        return
-    for archivo in os.listdir("musica"):
-        if filtro.lower() in archivo.lower():
-            nombre, _ = os.path.splitext(archivo)
-            if " - " in nombre:
-                artista, cancion = nombre.split(" - ", 1)
-            else:
-                artista, cancion = "Desconocido", nombre
-            lista.insert("", "end", values=(cancion.strip(), artista.strip()))
 
-# Filtrar lista
-def filtrar_lista(event=None):
-    filtro = entrada_filtro.get()
-    actualizar_lista(filtro)
+    rutas = []
+    if tipo == "Música 🎶":
+        carpeta = TIPOS_CARPETAS[tipo]
+        if not os.path.isdir(carpeta):
+            return
+        FORMATOS_VALIDOS = (".mp3", ".mp4", ".wav", ".m4a")
+        rutas = [os.path.join(carpeta, f) for f in os.listdir(carpeta) if f.lower().endswith(FORMATOS_VALIDOS)]
+    elif tipo == "Películas 🎥":
+        carpeta = TIPOS_CARPETAS[tipo]
+        if not os.path.isdir(carpeta):
+            return
+        rutas = [os.path.join(carpeta, f) for f in os.listdir(carpeta)]
+    elif tipo.startswith("otro/"):
+        carpeta = tipo
+        if not os.path.isdir(carpeta):
+            return
+        rutas = [os.path.join(carpeta, f) for f in os.listdir(carpeta)]
 
-# Abrir archivo
-def abrir_archivo(event):
-    item = lista.focus()
-    if item:
-        nombre_archivo = lista.item(item, "values")[0]
-        for archivo in os.listdir("musica"):
-            if nombre_archivo in archivo:
-                ruta = os.path.abspath(os.path.join("musica", archivo))
-                try:
-                    if os.name == 'nt':
-                        os.startfile(ruta)
-                    else:
-                        subprocess.run(['open' if sys.platform == 'darwin' else 'xdg-open', ruta])
-                except Exception as e:
-                    messagebox.showerror("❌ Error", f"No se pudo abrir: {e}")
-                break
+    for archivo in rutas:
+        nombre = os.path.basename(archivo)
+        if filtro in nombre.lower():  # <-- aquí se aplica el filtro
+            lista.insert("", "end", values=(nombre, archivo))
 
-# Reproducción aleatoria
 def reproducir_todo_aleatorio():
-    if not os.path.isdir("musica"):
-        messagebox.showinfo("🎧", "No hay canciones para reproducir.")
+    carpeta = TIPOS_CARPETAS["Música 🎶"]
+    if not os.path.isdir(carpeta):
+        messagebox.showinfo("🎵", "No hay canciones para reproducir.")
         return
-
-    archivos = [os.path.join("musica", f) for f in os.listdir("musica") if f.lower().endswith(".mp3")]
+    FORMATOS_VALIDOS = (".mp3", ".mp4", ".wav", ".m4a")
+    archivos = [os.path.join(carpeta, f) for f in os.listdir(carpeta) if f.lower().endswith(".mp3")]
     if not archivos:
-        messagebox.showinfo("🎧", "No hay archivos MP3 en la carpeta.")
+        messagebox.showinfo("🎵", "No hay archivos MP3 en la carpeta.")
         return
-
     random.shuffle(archivos)
 
     def reproducir():
         pygame.mixer.init()
         for archivo in archivos:
             try:
+                nombre = os.path.basename(archivo)
+                cancion_actual_label.config(text=f"🎵 Sonando ahora: {nombre}")
+
                 pygame.mixer.music.load(archivo)
                 pygame.mixer.music.play()
+
                 while pygame.mixer.music.get_busy():
                     time.sleep(0.5)
             except Exception as e:
                 messagebox.showerror("❌ Error", f"No se pudo reproducir: {e}")
         pygame.mixer.quit()
+        cancion_actual_label.config(text="🎵 Reproducción finalizada")
 
     threading.Thread(target=reproducir, daemon=True).start()
-# --- INTERFAZ PRINCIPAL ---
+
 root = tk.Tk()
 root.title("🎵 Descargador Multicarpeta")
-root.geometry("600x600")
+root.geometry("800x650")
 
-# Entrada de filtro
+tab_actual = tk.StringVar(value="Música 🎶")
+
+
 entrada_filtro = tk.Entry(root, width=50)
 entrada_filtro.pack(pady=5)
-entrada_filtro.bind("<KeyRelease>", filtrar_lista)
 
-# Lista estilo tabla con scroll
 frame_tabla = tk.Frame(root)
 frame_tabla.pack()
 
 scroll = tk.Scrollbar(frame_tabla)
 scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
-lista = ttk.Treeview(frame_tabla, columns=("Canción", "Artista"), show="headings", yscrollcommand=scroll.set, height=20)
-lista.heading("Canción", text="🎵 Canción")
-lista.heading("Artista", text="🎤 Artista")
-lista.column("Canción", width=300)
-lista.column("Artista", width=250)
+lista = ttk.Treeview(frame_tabla, columns=("Nombre", "Ruta"), show="headings", yscrollcommand=scroll.set, height=20)
+lista.heading("Nombre", text="🔹 Archivo")
+lista.heading("Ruta", text="🔹 Ruta")
+lista.column("Nombre", width=200)
+lista.column("Ruta", width=450)
 lista.pack(side=tk.LEFT)
 
 scroll.config(command=lista.yview)
-lista.bind("<Double-Button-1>", abrir_archivo)
 
-# Botones de tipo
+lista.bind("<Double-Button-1>", lambda e: abrir_archivo(lista.item(lista.focus(), "values")[1]))
+
 frame_botones = tk.Frame(root)
 frame_botones.pack(pady=10)
 
 for tipo in TIPOS_CARPETAS:
-    boton = tk.Button(frame_botones, text=f"⬇️ {tipo}", command=lambda t=tipo: descargar_con_tipo(t))
-    boton.pack(side=tk.LEFT, padx=10)
+    tk.Button(frame_botones, text=f"⬇️ {tipo}", command=lambda t=tipo: descargar_con_tipo(t)).pack(side=tk.LEFT, padx=5)
 
-# Botón de reproducción aleatoria
-boton_reproducir_aleatorio = tk.Button(root, text="🎲 Reproducir Todo Aleatoriamente", command=reproducir_todo_aleatorio)
-boton_reproducir_aleatorio.pack(pady=10)
+tk.Button(root, text="🎲 Reproducir Todo Aleatoriamente", command=reproducir_todo_aleatorio).pack(pady=10)
 
-# Mensaje de agradecimiento
-agradecimiento = tk.Label(
-    root,
-    text="🌟 ¡Gracias por usar esta app! Hecha con amor y beats. 🎶\n"
-         "Si esto alegró tu día, ya valió la pena. ❤️",
-    fg="gray",
-    font=("Arial", 10, "italic")
-)
+menu_tabs = tk.Menu(root)
+
+submenu = tk.Menu(menu_tabs, tearoff=0)
+
+for tipo in ["Música 🎶", "Películas 🎥"]:
+    menu_tabs.add_command(label=tipo, command=lambda t=tipo: (tab_actual.set(t), mostrar_contenido(t)))
+
+
+if os.path.isdir("otro"):
+    for subcarpeta in os.listdir("otro"):
+        ruta = os.path.join("otro", subcarpeta)
+        if os.path.isdir(ruta):
+            submenu.add_command(label=subcarpeta, command=lambda r=ruta: (tab_actual.set(r), mostrar_contenido(r)))
+
+menu_tabs.add_cascade(label="Otro 🧹", menu=submenu)
+
+root.config(menu=menu_tabs)
+
+mostrar_contenido("Música 🎶")
+# Mostrar la canción actual
+cancion_actual_label = tk.Label(root, text="🎵 Nada sonando por ahora", font=("Arial", 12, "bold"))
+cancion_actual_label.pack()
+
+agradecimiento = tk.Label(root, text="🌟 ¡Gracias por usar esta app! Hecha con amor y beats. 🎶\nSi esto alegró tu día, ya valió la pena. ❤️", fg="gray", font=("Arial", 10, "italic"))
 agradecimiento.pack(pady=10)
 
-# Iniciar con lista actual
-actualizar_lista()
-
-# Ejecutar app
 root.mainloop()
