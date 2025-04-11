@@ -14,6 +14,8 @@ TIPOS_CARPETAS = {
     "Música 🎶": "musica",
     "Otro 🧹": "otro"
 }
+canciones_aleatorias = []
+indice_actual = 0
 
 class ProgresoDescarga(tk.Toplevel):
     def __init__(self, parent):
@@ -138,43 +140,60 @@ def mostrar_contenido(tipo):
         carpeta = tipo
         if not os.path.isdir(carpeta):
             return
-        rutas = [os.path.join(carpeta, f) for f in os.listdir(carpeta)]
+        FORMATOS_VALIDOS = (".mp3", ".mp4", ".wav", ".m4a")
+        rutas = [os.path.join(carpeta, f) for f in os.listdir(carpeta) if f.lower().endswith(FORMATOS_VALIDOS)]
 
     for archivo in rutas:
         nombre = os.path.basename(archivo)
         if filtro in nombre.lower():  # <-- aquí se aplica el filtro
             lista.insert("", "end", values=(nombre, archivo))
 
+
 def reproducir_todo_aleatorio():
+    global canciones_aleatorias, indice_actual
     carpeta = TIPOS_CARPETAS["Música 🎶"]
     if not os.path.isdir(carpeta):
         messagebox.showinfo("🎵", "No hay canciones para reproducir.")
         return
     FORMATOS_VALIDOS = (".mp3", ".mp4", ".wav", ".m4a")
-    archivos = [os.path.join(carpeta, f) for f in os.listdir(carpeta) if f.lower().endswith(".mp3")]
-    if not archivos:
+    canciones_aleatorias = [os.path.join(carpeta, f) for f in os.listdir(carpeta) if f.lower().endswith(".mp3")]
+    if not canciones_aleatorias:
         messagebox.showinfo("🎵", "No hay archivos MP3 en la carpeta.")
         return
-    random.shuffle(archivos)
+    random.shuffle(canciones_aleatorias)
+    indice_actual = 0
+    iniciar_reproduccion()
+
+def iniciar_reproduccion():
+    global canciones_aleatorias, indice_actual
 
     def reproducir():
+        global indice_actual
         pygame.mixer.init()
-        for archivo in archivos:
+        while indice_actual < len(canciones_aleatorias):
+            archivo = canciones_aleatorias[indice_actual]
             try:
                 nombre = os.path.basename(archivo)
                 cancion_actual_label.config(text=f"🎵 Sonando ahora: {nombre}")
-
                 pygame.mixer.music.load(archivo)
                 pygame.mixer.music.play()
-
                 while pygame.mixer.music.get_busy():
                     time.sleep(0.5)
             except Exception as e:
                 messagebox.showerror("❌ Error", f"No se pudo reproducir: {e}")
+            indice_actual += 1
         pygame.mixer.quit()
         cancion_actual_label.config(text="🎵 Reproducción finalizada")
 
     threading.Thread(target=reproducir, daemon=True).start()
+def siguiente_cancion():
+    global indice_actual
+    if not canciones_aleatorias or indice_actual >= len(canciones_aleatorias) - 1:
+        cancion_actual_label.config(text="🎵 No hay más canciones.")
+        return
+    indice_actual += 1
+    pygame.mixer.music.stop()
+    iniciar_reproduccion()
 
 root = tk.Tk()
 root.title("🎵 Descargador Multicarpeta")
@@ -210,6 +229,8 @@ for tipo in TIPOS_CARPETAS:
     tk.Button(frame_botones, text=f"⬇️ {tipo}", command=lambda t=tipo: descargar_con_tipo(t)).pack(side=tk.LEFT, padx=5)
 
 tk.Button(root, text="🎲 Reproducir Todo Aleatoriamente", command=reproducir_todo_aleatorio).pack(pady=10)
+tk.Button(root, text="⏭️ Siguiente Canción", command=siguiente_cancion).pack()
+
 
 menu_tabs = tk.Menu(root)
 
@@ -223,7 +244,8 @@ if os.path.isdir("otro"):
     for subcarpeta in os.listdir("otro"):
         ruta = os.path.join("otro", subcarpeta)
         if os.path.isdir(ruta):
-            submenu.add_command(label=subcarpeta, command=lambda r=ruta: (tab_actual.set(r), mostrar_contenido(r)))
+            submenu.add_command(label=subcarpeta, command=lambda s=subcarpeta: (tab_actual.set(f"otro/{s}"), mostrar_contenido(f"otro/{s}")))
+
 
 menu_tabs.add_cascade(label="Otro 🧹", menu=submenu)
 
