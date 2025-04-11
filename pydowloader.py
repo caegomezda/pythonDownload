@@ -8,6 +8,8 @@ def obtener_carpeta_destino():
         "3": "otro"
     }
 
+    #soory for that, my fault.
+
     print("\n📁 ¿Qué tipo de contenido vas a descargar?")
     print("1. Películas")
     print("2. Música")
