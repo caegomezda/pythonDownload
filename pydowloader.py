@@ -4,16 +4,14 @@ import os
 def obtener_carpeta_destino():
     tipos_predefinidos = {
         "1": "peliculas",
-        "2": "porno",
-        "3": "musica",
-        "4": "otro"
+        "2": "musica",
+        "3": "otro"
     }
 
     print("\n📁 ¿Qué tipo de contenido vas a descargar?")
     print("1. Películas")
-    print("2. Porno")
-    print("3. Música")
-    print("4. Otro")
+    print("2. Música")
+    print("3. Otro")
 
     opcion = input("📝 Elige una opción (1-4): ").strip()
 
