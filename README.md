@@ -91,9 +91,4 @@ Esto generará un archivo ejecutable en la carpeta /dist.
 ¿Ideas, dudas o mejoras? ¡Este proyecto es completamente abierto!
 Está comentado y pensado para que cualquier persona pueda adaptarlo a sus necesidades sin complicaciones.
 
-¡Gracias por usar este descargador de YouTube! 🚀🎶
-
-
----
-
-¿Te gustaría que también te ayude a dejar el `main.py` bien comentado y listo para compartir junto con este README?
+¡Gracias por usar esta app!
