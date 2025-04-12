@@ -204,6 +204,10 @@ tab_actual = tk.StringVar(value="Música 🎶")
 
 entrada_filtro = tk.Entry(root, width=50)
 entrada_filtro.pack(pady=5)
+entrada_filtro.bind("<Return>", lambda event: mostrar_contenido(tab_actual.get()))
+entrada_filtro.bind("<KeyRelease>", lambda e: mostrar_contenido(tab_actual.get()))
+tk.Button(root, text="🔍 Buscar", command=lambda: mostrar_contenido(tab_actual.get())).pack()
+
 
 frame_tabla = tk.Frame(root)
 frame_tabla.pack()
