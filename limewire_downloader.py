@@ -148,7 +148,6 @@ def mostrar_contenido(tipo):
         if filtro in nombre.lower():  # <-- aquí se aplica el filtro
             lista.insert("", "end", values=(nombre, archivo))
 
-
 def reproducir_todo_aleatorio():
     global canciones_aleatorias, indice_actual
     carpeta = TIPOS_CARPETAS["Música 🎶"]
@@ -175,6 +174,7 @@ def iniciar_reproduccion():
             try:
                 nombre = os.path.basename(archivo)
                 cancion_actual_label.config(text=f"🎵 Sonando ahora: {nombre}")
+                pygame.mixer.music.stop()
                 pygame.mixer.music.load(archivo)
                 pygame.mixer.music.play()
                 while pygame.mixer.music.get_busy():
@@ -186,6 +186,7 @@ def iniciar_reproduccion():
         cancion_actual_label.config(text="🎵 Reproducción finalizada")
 
     threading.Thread(target=reproducir, daemon=True).start()
+
 def siguiente_cancion():
     global indice_actual
     if not canciones_aleatorias or indice_actual >= len(canciones_aleatorias) - 1:
@@ -195,9 +196,18 @@ def siguiente_cancion():
     pygame.mixer.music.stop()
     iniciar_reproduccion()
 
+def cancion_anterior():
+    global indice_actual
+    if not canciones_aleatorias or indice_actual >= len(canciones_aleatorias) - 1:
+        cancion_actual_label.config(text="🎵 No hay más canciones.")
+        return
+    indice_actual -= 1
+    pygame.mixer.music.stop()
+    iniciar_reproduccion()  
+
 root = tk.Tk()
 root.title("🎵 Descargador Multicarpeta")
-root.geometry("800x650")
+root.geometry("800x700")
 
 tab_actual = tk.StringVar(value="Música 🎶")
 
@@ -233,6 +243,7 @@ for tipo in TIPOS_CARPETAS:
     tk.Button(frame_botones, text=f"⬇️ {tipo}", command=lambda t=tipo: descargar_con_tipo(t)).pack(side=tk.LEFT, padx=5)
 
 tk.Button(root, text="🎲 Reproducir Todo Aleatoriamente", command=reproducir_todo_aleatorio).pack(pady=10)
+tk.Button(root, text="⏭️ Canción Anterior", command=cancion_anterior).pack()
 tk.Button(root, text="⏭️ Siguiente Canción", command=siguiente_cancion).pack()
 
 
