@@ -8,8 +8,6 @@ def obtener_carpeta_destino():
         "3": "otro"
     }
 
-    #soory for that, my fault.
-
     print("\n📁 ¿Qué tipo de contenido vas a descargar?")
     print("1. Películas")
     print("2. Música")
@@ -42,15 +40,31 @@ def descargar_video(url, carpeta_destino):
     try:
         with yt_dlp.YoutubeDL(opciones) as ydl:
             ydl.download([url])
-        print(f"✅ Video descargado en la carpeta '{carpeta_destino}'")
+        print(f"✅ Video descargado en la carpeta '{carpeta_destino}'\n")
     except Exception as e:
         print("⚠️ Error durante la descarga:")
         print(e)
 
+def obtener_links():
+    print("\n🔗 Ingresa los links uno por uno. Escribe 'fin' para terminar.\n")
+    links = []
+    while True:
+        link = input("🔹 Link: ").strip()
+        if link.lower() == "fin":
+            break
+        elif link:
+            links.append(link)
+        else:
+            print("⚠️ No ingresaste nada.")
+    return links
+
 if __name__ == "__main__":
-    url = input("🔗 Ingresa la URL del video de YouTube: ").strip()
-    if url:
+    links = obtener_links()
+    if links:
         carpeta = obtener_carpeta_destino()
-        descargar_video(url, carpeta)
+        for link in links:
+            print(f"\n⬇️ Descargando: {link}")
+            descargar_video(link, carpeta)
+        print("🏁 Todas las descargas han finalizado.")
     else:
-        print("❌ No ingresaste una URL.")
+        print("❌ No se ingresaron links.")
